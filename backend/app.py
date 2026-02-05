@@ -9,7 +9,7 @@ import logging
 import threading
 import gc
 import torch
-from model_loader import ensure_models
+from backend.model_loader import ensure_models
 
 from final_inference_logic import predict, load_models, explain_layman
 
