@@ -11,7 +11,7 @@ import gc
 import torch
 from backend.model_loader import ensure_models
 
-from final_inference_logic import predict, load_models, explain_layman
+from backend.final_inference_logic import predict, load_models, explain_layman
 
 app = FastAPI(title="Voice Detector API")
 logger = logging.getLogger("voice_detector")
