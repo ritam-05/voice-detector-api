@@ -445,7 +445,7 @@ This makes the system explainable — critical for hackathon judging.
 ---
 
 It is a **multi-stage adaptive AI verification system** built to handle real-world edge cases.
-
+This system is LANGUAGE INDEPENDENT.
 
 
 
