@@ -33,3 +33,4 @@ models/
 *.pt
 *.ckpt
 deploy/backend/models/
+stage_1/stage1_features/
