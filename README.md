@@ -81,7 +81,7 @@ This generates:
 python data_pipeline/build_dataset_audio_only.py
 ```
 
-This regenerates `X.npy` and `y.npy`.
+This regenerates `X.npy` and `y.npy`. (used by baseline model)
 
 ## Data Scripts Used
 
