@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.ipynb
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Data & datasets
+data/
+datasets/
+
+# Cache
+.cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Model weights
+models/
+*.pt
+*.ckpt
+deploy/backend/models/

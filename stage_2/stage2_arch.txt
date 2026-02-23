@@ -1,0 +1,10 @@
+Audio (4s)
+↓
+Wav2Vec2 Encoder (last 4 layers trainable)
+↓
+Temporal statistics pooling
+(mean + std)
+↓
+MLP
+↓
+Human Probability

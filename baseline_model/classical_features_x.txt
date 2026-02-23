@@ -1,0 +1,92 @@
+CLASSICAL AUDIO FEATURES USED (16 TOTAL)
+
+The following 16 handcrafted audio features were used in the classical
+machine learning model (Random Forest / LightGBM / XGBoost).
+
+These features summarize low-level acoustic properties of speech and
+were extracted per audio segment.
+
+
+1–13. MFCC (Mel-Frequency Cepstral Coefficients)
+
+
+MFCCs represent the short-term spectral envelope of speech
+in a way that approximates human auditory perception.
+
+Each MFCC captures information about:
+- vocal tract shape
+- spectral energy distribution
+- phonetic structure
+
+In this project:
+- 13 MFCC coefficients were computed per audio segment
+- The mean value of each coefficient over time was used
+
+Limitation:
+MFCCs capture spectral shape but lose fine temporal and phase information,
+making them insufficient to distinguish clean human speech from TTS.
+
+
+14. Spectral Centroid
+
+
+Represents the "center of mass" of the audio spectrum.
+
+High centroid:
+- brighter, sharper sounds
+
+Low centroid:
+- darker, muffled sounds
+
+Used to capture overall timbre characteristics.
+
+Limitation:
+Studio-recorded human speech and AI-generated speech often have
+very similar spectral centroids.
+
+
+15. Spectral Bandwidth
+
+
+Measures how spread out the frequencies are around the centroid.
+
+High bandwidth:
+- noisy or complex signals
+
+Low bandwidth:
+- smooth, clean signals
+
+Limitation:
+Clean human recordings and TTS both exhibit low bandwidth,
+making them difficult to distinguish.
+
+
+16. Zero Crossing Rate (ZCR)
+
+
+Counts how often the audio signal crosses zero amplitude.
+
+High ZCR:
+- noisy or unvoiced sounds
+
+Low ZCR:
+- smooth, voiced speech
+
+Limitation:
+TTS and clean human speech both have low ZCR,
+leading to ambiguity.
+
+
+OVERALL LIMITATION OF THESE FEATURES
+
+
+These 16 features describe how the audio was recorded,
+not how speech was physiologically produced.
+
+As a result:
+- Studio-quality human speech can be acoustically indistinguishable from TTS
+- The model relies on recording artifacts rather than speech production cues
+
+This limitation motivated the transition to deep learning
+using self-supervised speech models (e.g., wav2vec2),
+which learn speech production characteristics directly from raw audio.

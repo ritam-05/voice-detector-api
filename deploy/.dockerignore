@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git
+.git/
+.gitignore
+
+# Virtual envs
+venv/
+.env/
+
+# Audio / datasets (VERY IMPORTANT)
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.npy
+*.pt
+*.pth
+
+# Datasets & experiments
+dataset_building/
+baseline_model/
+stage_1/
+stage_2/
+features_cache/
+processed/
+sentences/
+wav2vec2_base_local/
+wav2vec2_download/
+zz_archives/
+
+# Local tests & junk
+*.log
+*.tmp
+*.zip
+
+# OS / IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Downloads
+models/
