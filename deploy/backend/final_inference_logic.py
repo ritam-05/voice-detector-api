@@ -10,15 +10,18 @@ from aasist_backend import AASIST_Backend
 # =========================
 # CONFIG
 # =========================
-# Fix model paths (use models/ and portable slashes)
+from huggingface_hub import hf_hub_download
+
+# Fix model paths (use huggingface_hub caching to avoid strict copies or timeouts on Render)
 def _resolve_model_path(filename):
-    base_dir = Path(__file__).parent
-    path = base_dir / "models" / filename
-
-    if path.exists():
+    repo_id = "ritam-05/voice-detector-models"
+    try:
+        # This will download it to HuggingFace's global cache dir (~/.cache/huggingface/hub) and return its path
+        print(f"Resolving model {filename} via Hugging Face Hub (this may take a minute if not cached)...")
+        path = hf_hub_download(repo_id=repo_id, filename=filename)
         return path
-
-    raise FileNotFoundError(f"Model file not found: {path}")
+    except Exception as e:
+        raise FileNotFoundError(f"Failed to fetch {filename} from HF {repo_id}: {e}")
 
 # Replace string device with torch.device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
