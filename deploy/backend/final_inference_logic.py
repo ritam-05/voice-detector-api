@@ -698,8 +698,33 @@ def degradation_recheck(stage2_model, chunks):
     return float(arr.mean()), float((arr > 0.5).mean())
 
 
+def _ensure_wav(path):
+    """Convert non-WAV audio (mp4, m4a, aac, etc.) to a temp WAV via ffmpeg."""
+    import subprocess, tempfile
+    ext = os.path.splitext(path)[1].lower()
+    if ext in ('.wav',):
+        return path, False  # already WAV, no cleanup needed
+    fd, tmp_wav = tempfile.mkstemp(suffix='.wav')
+    os.close(fd)
+    try:
+        subprocess.run(
+            ['ffmpeg', '-y', '-i', path, '-ac', '1', '-ar', str(SAMPLE_RATE), '-sample_fmt', 's16', tmp_wav],
+            check=True, capture_output=True
+        )
+        return tmp_wav, True  # converted, caller should clean up
+    except Exception as e:
+        if os.path.exists(tmp_wav):
+            os.unlink(tmp_wav)
+        raise RuntimeError(f"ffmpeg conversion failed for {ext}: {e}")
+
+
 def load_chunks(path):
-    wav, sr = torchaudio.load(path)
+    wav_path, needs_cleanup = _ensure_wav(path)
+    try:
+        wav, sr = torchaudio.load(wav_path)
+    finally:
+        if needs_cleanup and os.path.exists(wav_path):
+            os.unlink(wav_path)
     wav = wav.mean(dim=0)
 
     if sr != SAMPLE_RATE:

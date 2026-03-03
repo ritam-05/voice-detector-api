@@ -86,6 +86,7 @@ This regenerates `X.npy` and `y.npy`. (used by baseline model)
 ## Data Scripts Used
 
 ### Data pipeline (`data_pipeline/`)
+
 - `build_dataset_audio_only.py`: builds/organizes the base audio-only dataset structure.
 - `build_stage1_dataset.py`: prepares Stage-1 dataset folders (`ai` / `human`).
 - `augment_ai.py`: applies synthetic degradations/perturbations to AI audio.
@@ -96,6 +97,7 @@ This regenerates `X.npy` and `y.npy`. (used by baseline model)
 - `dataset_stage2.py`: Stage-2 dataset loader utilities.
 
 ### Stage-1 scripts (`stage_1/`)
+
 - `build_stage1_dataset.py`: Stage-1 local dataset preparation.
 - `dataset_stage1.py`: wav loading, resampling, chunk sampling for Stage-1.
 - `stage1_feature_extraction.py`: feature extraction pipeline for feature-based Stage-1 experiments.
@@ -104,11 +106,13 @@ This regenerates `X.npy` and `y.npy`. (used by baseline model)
 - `eval_stage1.py`: evaluation script for Stage-1 model performance checks.
 
 ### Training scripts (`training/`)
+
 - `train_stage1_final.py`: training entrypoint for Stage-1 detector.
 - `train_stage2_aasist.py`: training entrypoint for Stage-2 AASIST verifier.
 - `stage1_model.py`: training-side Stage-1 model module.
 
 ---
+
 # 1️⃣ Evolution of the System
 
 ## 🔹 Phase 1 – LGBM LoLo Baseline Model
@@ -117,20 +121,19 @@ The first version of the system used a **LightGBM (LGBM) classifier** trained on
 
 ### 📊 Performance
 
-* Accuracy: **~85%**
-* Weakness: Failed on **high-quality studio recordings**
-* Training bias: Mostly low-quality, noisy recordings
-* Could not generalize to:
-
-  * Clean AI
-  * Studio human voices
-  * Augmented / compressed audio
+- Accuracy: **~85%**
+- Weakness: Failed on **high-quality studio recordings**
+- Training bias: Mostly low-quality, noisy recordings
+- Could not generalize to:
+  - Clean AI
+  - Studio human voices
+  - Augmented / compressed audio
 
 This version served as a strong baseline but exposed the need for:
 
-* Better representation learning
-* Robustness to degradation
-* AI artifact detection
+- Better representation learning
+- Robustness to degradation
+- AI artifact detection
 
 ---
 
@@ -150,12 +153,12 @@ SNR_{dB} = 20 \log_{10} \left( \frac{RMS}{NoiseFloor} \right)
 
 Where:
 
-* ( RMS = \sqrt{\frac{1}{N} \sum x^2} )
-* NoiseFloor = 5th percentile amplitude
+- ( RMS = \sqrt{\frac{1}{N} \sum x^2} )
+- NoiseFloor = 5th percentile amplitude
 
 Degraded if:
 
-* SNR < 18 dB
+- SNR < 18 dB
 
 ---
 
@@ -167,7 +170,7 @@ Flatness = \frac{\exp(\text{mean}(\log(P)))}{\text{mean}(P)}
 
 Where:
 
-* (P) = power spectrum
+- (P) = power spectrum
 
 Higher flatness → more noise-like
 Lower flatness → tonal/studio
@@ -188,22 +191,20 @@ Used to detect distortion.
 
 We engineered AI-specific indicators:
 
-* **Repetition Score**
+- **Repetition Score**
+  - MFCC cosine similarity across chunks
+  - High similarity → looped patterns
 
-  * MFCC cosine similarity across chunks
-  * High similarity → looped patterns
+- **Pitch Variance**
+  - Estimated F0 via autocorrelation
+  - Low variance → synthetic
 
-* **Pitch Variance**
-
-  * Estimated F0 via autocorrelation
-  * Low variance → synthetic
-
-* **Vocoder Artifact Score**
+- **Vocoder Artifact Score**
   [
   Score = Flatness + 0.02(1 - HF_{ratio})
   ]
 
-* **Dynamics Ratio**
+- **Dynamics Ratio**
   [
   dyn = \frac{\sigma(RMS)}{\mu(RMS)}
   ]
@@ -222,17 +223,16 @@ We upgraded to a **representation learning model**:
 
 ### Architecture
 
-* `facebook/wav2vec2-base`
-* Mean pooled embeddings
-* MLP head:
-
-  * 768 → 256 → 1
+- `facebook/wav2vec2-base`
+- Mean pooled embeddings
+- MLP head:
+  - 768 → 256 → 1
 
 ### Stage 1 Role
 
 Binary classifier:
 
-* Outputs probability of AI
+- Outputs probability of AI
 
 ### Stage 1 Constraints & Thresholds
 
@@ -264,10 +264,10 @@ So we built Stage 2.
 
 AASIST is a **graph attention-based backend** that analyzes:
 
-* Frame-level temporal patterns
-* Spectral artifacts
-* Subtle vocoder cues
-* Cross-frame dependencies
+- Frame-level temporal patterns
+- Spectral artifacts
+- Subtle vocoder cues
+- Cross-frame dependencies
 
 Architecture:
 
@@ -305,7 +305,7 @@ Tiered adaptive logic:
 
 ---
 
-###  TIER 1: Very Confident AI (> 0.90)
+### TIER 1: Very Confident AI (> 0.90)
 
 | AASIST    | Decision                 |
 | --------- | ------------------------ |
@@ -315,7 +315,7 @@ Tiered adaptive logic:
 
 ---
 
-###  TIER 2: Confident AI (0.82–0.90)
+### TIER 2: Confident AI (0.82–0.90)
 
 | AASIST    | Decision                |
 | --------- | ----------------------- |
@@ -325,7 +325,7 @@ Tiered adaptive logic:
 
 ---
 
-###  TIER 3: Moderate AI (0.75–0.82)
+### TIER 3: Moderate AI (0.75–0.82)
 
 | AASIST    | Decision     |
 | --------- | ------------ |
@@ -417,14 +417,14 @@ Final Label + Explanation
 
 The system produces structured layman explanations based on:
 
-* Breathing detection
-* Pitch variance
-* Dynamics ratio
-* Repetition score
-* Vocoder artifacts
-* Clipping
-* Reverb
-* Micro-noises
+- Breathing detection
+- Pitch variance
+- Dynamics ratio
+- Repetition score
+- Vocoder artifacts
+- Clipping
+- Reverb
+- Micro-noises
 
 This makes the system explainable — critical for hackathon judging.
 
@@ -434,10 +434,10 @@ This makes the system explainable — critical for hackathon judging.
 
 | Feature           | Supported    |
 | ----------------- | ------------ |
-| Studio Human      | ✅            |
-| Low Quality Human | ✅            |
-| Augmented AI      | ✅            |
-| Clean AI          | ✅            |
+| Studio Human      | ✅           |
+| Low Quality Human | ✅           |
+| Augmented AI      | ✅           |
+| Clean AI          | ✅           |
 | Edge Cases        | INCONCLUSIVE |
 | Confidence Output | Yes          |
 | Explainability    | Yes          |
@@ -447,7 +447,4 @@ This makes the system explainable — critical for hackathon judging.
 It is a **multi-stage adaptive AI verification system** built to handle real-world edge cases.
 This system is LANGUAGE INDEPENDENT.
 
-
-
-
-
+All models uploaded at: https://huggingface.co/ritam-05/voice-detector-models/tree/main

@@ -1,0 +1,76 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Data & datasets
+data/
+datasets/
+
+# Cache
+.cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Model weights
+models/
+*.pt
+*.ckpt
+
+# Python
+__pycache__/
+*.pyc
+
+# Models
+models/
+*.pt
+*.onnx
+
+# Audio / data
+*.wav
+*.mp3
+*.flac
+*.npy
+
+# Datasets & experiments
+dataset_building/
+baseline_model/
+processed/
+features_cache/
+stage_1/
+stage_2/
+ai voice/
+human voice/
+backup_human_voice/
+sentences/
+schemas.py
+
+# HuggingFace caches
+wav2vec2_base_local/
+wav2vec2_download/
+
+# Archives
+zz_archives/
+
+# VSCode
+.vscode/
+
+# Misc
+*.log
+
+#Misc 2

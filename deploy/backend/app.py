@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import os
 import uvicorn
@@ -13,6 +14,15 @@ import torch
 from model_loader import ensure_models
 
 app = FastAPI(title="Voice Detector API")
+
+# --- CORS: allow frontend hosted anywhere to call the API ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 logger = logging.getLogger("voice_detector")
 
 # --- GLOBALS ---
