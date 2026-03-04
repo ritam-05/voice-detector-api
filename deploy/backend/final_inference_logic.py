@@ -809,79 +809,73 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     # Specific red flags from hand-crafted features
     repetition = next((f['score'] for f in hc_factors if f['name'] == 'repetition'), 0.0)
     vocoder = next((f['score'] for f in hc_factors if f['name'] == 'vocoder_artifacts'), 0.0)
-    has_red_flags = (repetition > 0.8) or (vocoder > 0.5) or (hc_ai_score > hc_hum_score + 0.5)
+    
+    # NEW: If RED FLAGS are strong (Repetition or Vocoder), force check AASIST even if S1 says human
+    has_red_flags = (repetition > 0.70) or (vocoder > 0.45)
 
-    # Stage-1 says HUMAN - trust it completely
+    # Stage-1 says HUMAN - but check if it's too good to be true (red flags)
     if s1_mean < S1_HUMAN_RECHECK_THRESHOLD:
-        return "HUMAN", s1_mean, "Stage-1 says HUMAN", (chunks, full_wav, hc_factors)
-
+        if not has_red_flags:
+            return "HUMAN", s1_mean, "Stage-1 says HUMAN", (chunks, full_wav, hc_factors)
+        # else: continue to AASIST check below
 
     # ADVANCED CONFIDENCE-WEIGHTED VERIFICATION (for maximum accuracy)
     # Adapt AASIST thresholds based on Stage-1 confidence level
-    if s1_mean > S1_AI_CHECK_THRESHOLD:
+    # We broaden the check to any s1_mean if red flags are present
+    if s1_mean > S1_AI_CHECK_THRESHOLD or has_red_flags:
         if stage2_ai is not None:
-             n_ai_v2 = tta_n if tta_n is not None else 3
-             s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_v2) for c in chunks])
-             s2_ai_mean = float(s2_ai_scores.mean())
+            n_ai_v2 = tta_n if tta_n is not None else 3
+            s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_v2) for c in chunks])
+            s2_ai_mean = float(s2_ai_scores.mean())
              
-             # Determine Stage-1 confidence level
-             s1_very_confident = s1_mean > 0.90  # Extremely confident AI
-             s1_confident = s1_mean > 0.82       # Confident AI
+            # Determine Stage-1 confidence level
+            s1_very_confident = s1_mean > 0.90
+            s1_confident = s1_mean > 0.82
              
-             # TIER 1: Stage-1 VERY confident AI (>0.90)
-             # Trust Stage-1 more, only need weak AASIST agreement
-             if s1_very_confident:
-                 if s2_ai_mean >= 0.40:  # AASIST leans AI
-                     # Both agree it's AI
-                     combined_score = (s1_mean * 0.7) + (s2_ai_mean * 0.3)
-                     return "AI", combined_score, f"Stage-1 very confident AI, AASIST agrees; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 elif s2_ai_mean < 0.20:  # AASIST strongly says HUMAN
-                     # Strong disagreement - trust AASIST's strong signal
-                     return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled by strong AASIST HUMAN signal; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 else:  # 0.20 <= AASIST < 0.40: weak disagreement
-                     # Stage-1 very confident but AASIST uncertain - trust Stage-1
-                     return "AI", s1_mean, f"Stage-1 very confident AI despite AASIST uncertainty; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+            # TIER 1: RED FLAGS or VERY Confident Stage-1
+            if has_red_flags:
+                # Absolute priority to mechanical fingerprints
+                return "AI", 0.95, f"AI detected via mechanical fingerprints (repetition/vocoder); s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+
+            if s1_very_confident:
+                if s2_ai_mean >= 0.05: 
+                    return "AI", max(s1_mean, s2_ai_mean), f"Stage-1 very confident AI confirmed; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                else:
+                    return "HUMAN", (1.0 - s2_ai_mean), f"AI signals overruled by extremely confident AASIST Human signal; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
              
-             # TIER 2: Stage-1 confident AI (0.82-0.90)
-             # Need moderate AASIST agreement
-             elif s1_confident:
-                 if s2_ai_mean >= 0.45:  # AASIST moderately agrees
-                     combined_score = (s1_mean * 0.65) + (s2_ai_mean * 0.35)
-                     return "AI", combined_score, f"Stage-1 confident AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 elif s2_ai_mean < 0.25:  # AASIST strongly disagrees
-                     # Check hand-crafted features for tie-breaking
-                     if hc_hum_score > hc_ai_score + 0.3:
-                         return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled; AASIST + features indicate HUMAN; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                     else:
-                         # Features don't strongly support HUMAN, be cautious
-                         return "INCONCLUSIVE", s1_mean, f"Stage-1 AI vs AASIST HUMAN, features unclear; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 else:  # 0.25 <= AASIST < 0.45: borderline
-                     # Use weighted combination with higher bar
-                     weighted = (s1_mean * 0.6) + (s2_ai_mean * 0.4)
-                     if weighted >= 0.65:
-                         return "AI", weighted, f"Weighted decision favors AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
-                     else:
-                         return "INCONCLUSIVE", weighted, f"Borderline case; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
+            # TIER 2: Stage-1 confident AI (0.82-0.90)
+            elif s1_confident:
+                if s2_ai_mean >= 0.45:
+                    combined_score = (s1_mean * 0.65) + (s2_ai_mean * 0.35)
+                    return "AI", combined_score, f"Stage-1 confident AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                elif s2_ai_mean < 0.25:
+                    if hc_hum_score > hc_ai_score + 0.3:
+                        return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled; AASIST + features indicate HUMAN; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                    else:
+                        return "INCONCLUSIVE", s1_mean, f"Stage-1 AI vs AASIST HUMAN, features unclear; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                else:
+                    weighted = (s1_mean * 0.6) + (s2_ai_mean * 0.4)
+                    if weighted >= 0.65:
+                        return "AI", weighted, f"Weighted decision favors AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
+                    else:
+                        return "INCONCLUSIVE", weighted, f"Borderline case; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
              
-             # TIER 3: Stage-1 moderately indicates AI (0.75-0.82)
-             # Need stronger AASIST confirmation
-             else:
-                 if s2_ai_mean >= AASIST_AI_THRESHOLD:  # 0.50
-                     combined_score = (s1_mean * 0.5) + (s2_ai_mean * 0.5)
-                     return "AI", combined_score, f"Stage-1 moderate AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 elif s2_ai_mean < AASIST_HUMAN_THRESHOLD:  # 0.30
-                     return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled by AASIST; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                 else:
-                     # Both are uncertain
-                     return "INCONCLUSIVE", s2_ai_mean, f"Both models uncertain; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+            # TIER 3: Stage-1 moderately indicates AI (0.75-0.82)
+            else:
+                if s2_ai_mean >= AASIST_AI_THRESHOLD:
+                    combined_score = (s1_mean * 0.5) + (s2_ai_mean * 0.5)
+                    return "AI", combined_score, f"Stage-1 moderate AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                elif s2_ai_mean < AASIST_HUMAN_THRESHOLD:
+                    return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled by AASIST; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
+                else:
+                    return "INCONCLUSIVE", s2_ai_mean, f"Both models uncertain; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
         else:
-            # AASIST not available - trust Stage-1 if very confident
-            if s1_mean > 0.90:
-                return "AI", s1_mean, f"Stage-1 very confident AI, AASIST unavailable; s1={s1_mean:.3f}", (chunks, full_wav, hc_factors)
+            if s1_mean > 0.90 or has_red_flags:
+                return "AI", s1_mean, f"Confirmed AI (S1/Flags), AASIST unavailable; s1={s1_mean:.3f}", (chunks, full_wav, hc_factors)
             else:
                 return "INCONCLUSIVE", s1_mean, "Stage-1 AI, but AASIST not available for verification", (chunks, full_wav, hc_factors)
     
-    # Stage-1 ambiguous (0.40-0.75) - rely heavily on AASIST
+    # Stage-1 ambiguous (0.40-0.75)
     if stage2_ai is None:
         return "INCONCLUSIVE", s1_mean, "Stage-1 ambiguous, AASIST not available", (chunks, full_wav, hc_factors)
     
@@ -889,14 +883,12 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_final) for c in chunks])
     s2_ai_mean = float(s2_ai_scores.mean())
     
-    # For ambiguous Stage-1, use stricter AASIST thresholds with weighted decision
-    if s2_ai_mean >= 0.55:  # AASIST confident AI
+    if s2_ai_mean >= 0.55:
         return "AI", s2_ai_mean, f"Stage-1 ambiguous, AASIST confident AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-    elif s2_ai_mean < 0.35:  # AASIST leans HUMAN
+    elif s2_ai_mean < 0.35:
         return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 ambiguous, AASIST leans HUMAN; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-    else:  # 0.35 <= AASIST < 0.55: truly ambiguous
-        # Use weighted combination
-        weighted = (s1_mean * 0.4) + (s2_ai_mean * 0.6)  # Trust AASIST more
+    else:
+        weighted = (s1_mean * 0.4) + (s2_ai_mean * 0.6)
         if weighted >= 0.52:
             return "AI", weighted, f"Weighted decision leans AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
         elif weighted < 0.45:
