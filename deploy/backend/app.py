@@ -75,8 +75,12 @@ def load_models_on_startup():
 
 
 # =========================
-# HEALTH CHECK
+# ROOT & HEALTH CHECK
 # =========================
+@app.get("/")
+def read_root():
+    return {"message": "VoiceGuard API is running. Use the /predict endpoint to analyze audio, or visit /docs for Swagger documentation."}
+
 @app.get("/health")
 def health():
     return {
