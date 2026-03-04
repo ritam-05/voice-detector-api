@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r backend/requirements.txt
 
-# ---- Expose port (Railway uses PORT env internally) ----
-EXPOSE 8000
+# ---- Expose port (HuggingFace spaces uses 7860, Render uses PORT env) ----
+EXPOSE 7860
 
 # ---- Start FastAPI (SINGLE WORKER ONLY) ----
-CMD sh -c "uvicorn backend.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"
+CMD sh -c "uvicorn backend.app:app --host 0.0.0.0 --port ${PORT:-7860} --workers 1"
