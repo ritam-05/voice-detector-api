@@ -821,7 +821,7 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     if s1_mean < 0.05:
          # Narrow threshold: Roger AI hits 0.9997, Sunday Suspense hits 0.9990.
          # The boundary of 'Impossible Consistency' is ~0.9992.
-         if repetition > 0.9992:
+         if repetition > 0.9998:
               return "AI", 0.95, f"AI detected via impossible repetition ({repetition:.4f}); s1={s1_mean:.3f}", (chunks, full_wav, hc_factors)
          return "HUMAN", s1_mean, "HUMAN confirmed; clean studio recording", (chunks, full_wav, hc_factors)
 
@@ -829,9 +829,13 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     # If the voice is suspicious (S1 is not clearly human) or has strong flags.
     # Studio-quality human voices can look "clean" like AI, so require stronger flags there.
     is_suspicious = (s1_mean > 0.40)
-    human_cues_present = (breath_count >= 1) or (hc_hum_score >= hc_ai_score + 0.15)
+    human_cues_present = (
+        (breath_count >= 1)
+        or (hc_hum_score >= hc_ai_score + 0.15)
+        or (studio and vocoder < 0.12 and repetition < 0.9997)
+    )
     if studio:
-        has_strong_flags = (repetition > 0.9992) or (vocoder > 0.30)
+        has_strong_flags = (repetition > 0.9998) or (vocoder > 0.35)
     else:
         has_strong_flags = (repetition > 0.995) or (vocoder > 0.15)
     
@@ -840,6 +844,10 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
             n_ai_v2 = tta_n if tta_n is not None else 3
             s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_v2) for c in chunks])
             s2_ai_mean = float(s2_ai_scores.mean())
+
+            # Studio-safe override: do not call AI unless Stage-2 and artifact signals are both strong.
+            if studio and s2_ai_mean < 0.65 and vocoder < 0.12 and repetition < 0.9998:
+                return "HUMAN", (1.0 - s2_ai_mean), f"Studio-safe overrule to HUMAN; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
             
             # If red flags are strong and Stage-2 supports AI, mark AI.
             # For studio-like audio, require stronger Stage-2 support to avoid false positives.
@@ -890,7 +898,7 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
                 else:
                     return "INCONCLUSIVE", s2_ai_mean, f"Both models uncertain; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
         else:
-            if s1_mean > 0.90 or has_strong_flags:
+            if (s1_mean > 0.90 or has_strong_flags) and not studio:
                 return "AI", s1_mean, f"Confirmed AI (S1/Flags), AASIST unavailable; s1={s1_mean:.3f}", (chunks, full_wav, hc_factors)
             else:
                 return "INCONCLUSIVE", s1_mean, "Stage-1 AI, but AASIST not available for verification", (chunks, full_wav, hc_factors)
@@ -902,6 +910,9 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     n_ai_final = tta_n if tta_n is not None else 3
     s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_final) for c in chunks])
     s2_ai_mean = float(s2_ai_scores.mean())
+
+    if studio and s2_ai_mean < 0.65 and vocoder < 0.12 and repetition < 0.9998:
+        return "HUMAN", (1.0 - s2_ai_mean), f"Studio-safe overrule to HUMAN; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
 
     amb_ai_threshold = 0.70 if studio else 0.55
     amb_human_threshold = 0.45 if studio else 0.35
