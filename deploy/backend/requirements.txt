@@ -10,3 +10,5 @@ httpx
 numpy
 scipy
 huggingface_hub
+soundfile
+torchcodec
