@@ -441,7 +441,6 @@ This makes the system explainable — critical for hackathon judging.
 | Augmented AI      | ✅           |
 | Clean AI          | ✅           |
 | Edge Cases        | INCONCLUSIVE |
-| Confidence Output | Yes          |
 | Explainability    | Yes          |
 
 ---
