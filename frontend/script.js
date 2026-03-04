@@ -46,7 +46,7 @@
     apiToggle.addEventListener('click', () => apiPanel.classList.toggle('hidden'));
 
     function apiUrl() {
-        return (apiUrlInput.value || 'http://localhost:8000').replace(/\/+$/, '');
+        return (apiUrlInput.value || 'https://ritam-05-voice-detector-api.hf.space').replace(/\/+$/, '');
     }
 
     apiCheckBtn.addEventListener('click', async () => {
