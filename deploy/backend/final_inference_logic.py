@@ -179,7 +179,8 @@ def estimate_snr_db(wav: torch.Tensor) -> float:
 def is_studio_like(wav: torch.Tensor) -> bool:
     """Heuristic: high SNR and low spectral flatness indicate studio-like audio."""
     try:
-        return estimate_snr_db(wav) > 25 and spectral_flatness(wav) < 0.02
+        # Broaden studio detection: many clean human recordings sit around flatness 0.02-0.05.
+        return estimate_snr_db(wav) > 20 and spectral_flatness(wav) < 0.05
     except Exception:
         return False
 
@@ -859,27 +860,32 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
              
             # TIER 2: Stage-1 confident AI (0.82-0.90)
             elif s1_confident:
-                if s2_ai_mean >= 0.45:
+                tier2_ai_threshold = 0.65 if studio else 0.45
+                tier2_human_threshold = 0.35 if studio else 0.25
+                if s2_ai_mean >= tier2_ai_threshold and not human_cues_present:
                     combined_score = (s1_mean * 0.65) + (s2_ai_mean * 0.35)
                     return "AI", combined_score, f"Stage-1 confident AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                elif s2_ai_mean < 0.25:
+                elif s2_ai_mean < tier2_human_threshold:
                     if hc_hum_score > hc_ai_score + 0.3:
                         return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled; AASIST + features indicate HUMAN; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
                     else:
                         return "INCONCLUSIVE", s1_mean, f"Stage-1 AI vs AASIST HUMAN, features unclear; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
                 else:
                     weighted = (s1_mean * 0.6) + (s2_ai_mean * 0.4)
-                    if weighted >= 0.65:
+                    weighted_ai_threshold = 0.72 if studio else 0.65
+                    if weighted >= weighted_ai_threshold and not human_cues_present:
                         return "AI", weighted, f"Weighted decision favors AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
                     else:
                         return "INCONCLUSIVE", weighted, f"Borderline case; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
              
             # TIER 3: Stage-1 moderately indicates AI (0.75-0.82)
             else:
-                if s2_ai_mean >= AASIST_AI_THRESHOLD:
+                tier3_ai_threshold = 0.65 if studio else AASIST_AI_THRESHOLD
+                tier3_human_threshold = 0.40 if studio else AASIST_HUMAN_THRESHOLD
+                if s2_ai_mean >= tier3_ai_threshold and not human_cues_present:
                     combined_score = (s1_mean * 0.5) + (s2_ai_mean * 0.5)
                     return "AI", combined_score, f"Stage-1 moderate AI, AASIST confirms; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                elif s2_ai_mean < AASIST_HUMAN_THRESHOLD:
+                elif s2_ai_mean < tier3_human_threshold:
                     return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 AI overruled by AASIST; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
                 else:
                     return "INCONCLUSIVE", s2_ai_mean, f"Both models uncertain; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
@@ -896,16 +902,20 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
     n_ai_final = tta_n if tta_n is not None else 3
     s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_final) for c in chunks])
     s2_ai_mean = float(s2_ai_scores.mean())
-    
-    if s2_ai_mean >= 0.55:
+
+    amb_ai_threshold = 0.70 if studio else 0.55
+    amb_human_threshold = 0.45 if studio else 0.35
+    if s2_ai_mean >= amb_ai_threshold and not human_cues_present:
         return "AI", s2_ai_mean, f"Stage-1 ambiguous, AASIST confident AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-    elif s2_ai_mean < 0.35:
+    elif s2_ai_mean < amb_human_threshold:
         return "HUMAN", (1.0 - s2_ai_mean), f"Stage-1 ambiguous, AASIST leans HUMAN; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
     else:
         weighted = (s1_mean * 0.4) + (s2_ai_mean * 0.6)
-        if weighted >= 0.52:
+        weighted_ai_threshold = 0.62 if studio else 0.52
+        weighted_human_threshold = 0.50 if studio else 0.45
+        if weighted >= weighted_ai_threshold and not human_cues_present:
             return "AI", weighted, f"Weighted decision leans AI; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
-        elif weighted < 0.45:
+        elif weighted < weighted_human_threshold:
             return "HUMAN", (1.0 - weighted), f"Weighted decision leans HUMAN; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
         else:
             return "INCONCLUSIVE", weighted, f"Truly ambiguous case; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}, weighted={weighted:.3f}", (chunks, full_wav, hc_factors)
