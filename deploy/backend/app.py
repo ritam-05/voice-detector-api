@@ -11,6 +11,9 @@ import threading
 import gc
 import torch
 
+import sys
+sys.path.append(os.path.dirname(__file__))
+
 from model_loader import ensure_models
 
 app = FastAPI(title="Voice Detector API")
