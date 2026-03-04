@@ -825,9 +825,14 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
          return "HUMAN", s1_mean, "HUMAN confirmed; clean studio recording", (chunks, full_wav, hc_factors)
 
     # TIER B: Red Flag Override (Human-mimicking AI like 'Roger')
-    # If the voice is suspicious (S1 is not clearly human) or has strong flags
+    # If the voice is suspicious (S1 is not clearly human) or has strong flags.
+    # Studio-quality human voices can look "clean" like AI, so require stronger flags there.
     is_suspicious = (s1_mean > 0.40)
-    has_strong_flags = (repetition > 0.995) or (vocoder > 0.15)
+    human_cues_present = (breath_count >= 1) or (hc_hum_score >= hc_ai_score + 0.15)
+    if studio:
+        has_strong_flags = (repetition > 0.9992) or (vocoder > 0.30)
+    else:
+        has_strong_flags = (repetition > 0.995) or (vocoder > 0.15)
     
     if is_suspicious or has_strong_flags:
         if stage2_ai is not None:
@@ -835,8 +840,10 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
             s2_ai_scores = np.array([tta_prob(stage2_ai, c, n=n_ai_v2) for c in chunks])
             s2_ai_mean = float(s2_ai_scores.mean())
             
-            # If the Red Flags are strong AND s2 doesn't strongly disagree, it's AI
-            if has_strong_flags and s2_ai_mean > 0.02:
+            # If red flags are strong and Stage-2 supports AI, mark AI.
+            # For studio-like audio, require stronger Stage-2 support to avoid false positives.
+            flag_support_threshold = 0.20 if studio else 0.05
+            if has_strong_flags and s2_ai_mean >= flag_support_threshold:
                  return "AI", 0.95, f"AI detected via mechanical fingerprints; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
                  
             # Tiered logic for Stage-1 vs Stage-2
@@ -844,13 +851,8 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
             s1_confident = s1_mean > 0.82
             
             if s1_very_confident:
-                if s2_ai_mean >= 0.05:
-                     return "AI", max(s1_mean, s2_ai_mean), f"AI confirmed (Stage-1); s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
-                else:
-                     return "HUMAN", (1.0 - s2_ai_mean), "AI overrule by AASIST", (chunks, full_wav, hc_factors)
-
-            if s1_very_confident:
-                if s2_ai_mean >= 0.05: 
+                studio_ai_confirm = 0.30 if studio else 0.10
+                if s2_ai_mean >= studio_ai_confirm and not human_cues_present:
                     return "AI", max(s1_mean, s2_ai_mean), f"Stage-1 very confident AI confirmed; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
                 else:
                     return "HUMAN", (1.0 - s2_ai_mean), f"AI signals overruled by extremely confident AASIST Human signal; s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
@@ -882,7 +884,7 @@ def predict(path, stage1=None, stage2_human=None, stage2_ai=None, tta_n=None):
                 else:
                     return "INCONCLUSIVE", s2_ai_mean, f"Both models uncertain; s1={s1_mean:.3f}, s2={s2_ai_mean:.3f}", (chunks, full_wav, hc_factors)
         else:
-            if s1_mean > 0.90 or has_red_flags:
+            if s1_mean > 0.90 or has_strong_flags:
                 return "AI", s1_mean, f"Confirmed AI (S1/Flags), AASIST unavailable; s1={s1_mean:.3f}", (chunks, full_wav, hc_factors)
             else:
                 return "INCONCLUSIVE", s1_mean, "Stage-1 AI, but AASIST not available for verification", (chunks, full_wav, hc_factors)
