@@ -1,5 +1,7 @@
 # VOICE DETECTOR API
 
+🚀 **Live Application:** [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
+
 ## Dataset Update
 
 The current human speech dataset was collected and prepared as follows:
