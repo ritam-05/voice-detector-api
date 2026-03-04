@@ -702,11 +702,15 @@ def degradation_recheck(stage2_model, chunks):
 
 
 def _ensure_wav(path):
-    """Convert non-WAV audio (mp4, m4a, aac, etc.) to a temp WAV via ffmpeg."""
+    """Convert ALL audio (mp4, m4a, aac, wav, etc.) to a temp WAV via ffmpeg.
+    This guarantees perfectly standard 16kHz, mono, s16 PCM audio to fix any 
+    browser-uploaded or weirdly-encoded .WAV issues."""
     import subprocess, tempfile
     ext = os.path.splitext(path)[1].lower()
-    if ext in ('.wav',):
-        return path, False  # already WAV, no cleanup needed
+    
+    # We purposefully do not early exit for .wav anymore, to enforce 16kHz & mono!
+    # if ext in ('.wav',):
+    #     return path, False
     fd, tmp_wav = tempfile.mkstemp(suffix='.wav')
     os.close(fd)
     try:
