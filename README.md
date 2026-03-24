@@ -2,13 +2,7 @@
 
 🚀 **Live Application:** [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
 
-## Hosting
 
-- Frontend: Netlify
-  - URL: [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
-- Backend: Hugging Face Spaces
-  - URL: [https://ritam-05-voice-detector-api.hf.space](https://ritam-05-voice-detector-api.hf.space)
-- Backend health check: [https://ritam-05-voice-detector-api.hf.space/health](https://ritam-05-voice-detector-api.hf.space/health)
 
 ## Dataset Update
 
@@ -457,3 +451,11 @@ It is a **multi-stage adaptive AI verification system** built to handle real-wor
 This system is LANGUAGE INDEPENDENT.
 
 All models uploaded at: https://huggingface.co/ritam-05/voice-detector-models/tree/main
+
+## Hosting
+
+- Frontend: Netlify
+  - URL: [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
+- Backend: Hugging Face Spaces
+  - URL: [https://ritam-05-voice-detector-api.hf.space](https://ritam-05-voice-detector-api.hf.space)
+- Backend health check: [https://ritam-05-voice-detector-api.hf.space/health](https://ritam-05-voice-detector-api.hf.space/health)
