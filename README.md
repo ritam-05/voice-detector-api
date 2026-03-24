@@ -2,6 +2,14 @@
 
 🚀 **Live Application:** [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
 
+## Hosting
+
+- Frontend: Netlify
+  - URL: [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
+- Backend: Hugging Face Spaces
+  - URL: [https://ritam-05-voice-detector-api.hf.space](https://ritam-05-voice-detector-api.hf.space)
+- Backend health check: [https://ritam-05-voice-detector-api.hf.space/health](https://ritam-05-voice-detector-api.hf.space/health)
+
 ## Dataset Update
 
 The current human speech dataset was collected and prepared as follows:
