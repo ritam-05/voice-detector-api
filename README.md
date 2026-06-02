@@ -1,4 +1,4 @@
-# VOICE DETECTOR API
+# VoiceGuard
 
 🚀 **Live Application:** [https://voiceguard12.netlify.app/](https://voiceguard12.netlify.app/)
 
